@@ -213,6 +213,8 @@ typedef enum {
     UIViewController * vc = [self currentViewController];
     UIViewController * nvc = [self previousViewController];
     CGRect rect = CGRectMake(0, 0, vc.view.frame.size.width, vc.view.frame.size.height);
+    [vc viewWillDisappear: NO];
+    [nvc viewWillAppear: NO];
 
     [UIView animateWithDuration:0.3f delay:kAnimationDelay options:0 animations:^{
         CGAffineTransform transf = CGAffineTransformIdentity;
@@ -222,6 +224,8 @@ typedef enum {
     }   completion:^(BOOL finished) {
         if (finished) {
             _animationInProgress = NO;
+            [vc viewDidDisappear: NO];
+            [nvc viewDidAppear: NO];
         }
     }];
 }
