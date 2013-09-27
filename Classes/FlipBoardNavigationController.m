@@ -197,7 +197,8 @@ typedef enum {
             [self.viewControllers removeObject:currentVC];
             _animationInProgress = NO;
             [previousVC viewDidAppear:NO];
-            handler();
+            if (handler)
+                handler();
         }
     }];
     
