@@ -100,16 +100,31 @@ typedef enum {
     
 }
 
+- (void) viewDidLoad
+{
+    [super viewDidLoad];
+    UIPanGestureRecognizer* panGesture = [[UIPanGestureRecognizer alloc] initWithTarget:self
+                                                                                 action:@selector(gestureRecognizerDidPan:)];
+    panGesture.cancelsTouchesInView = YES;
+    panGesture.delegate = self;
+    [self.view addGestureRecognizer:panGesture];
+    self.view.backgroundColor = [UIColor blackColor];
+    self.view.clipsToBounds = YES;
+}
+
 #pragma mark - PushViewController With Completion Block
 - (void) pushViewController:(UIViewController *)viewController completion:(FlipBoardNavigationControllerCompletionBlock)handler {
     _animationInProgress = YES;
     viewController.view.frame = CGRectOffset(self.view.bounds, self.view.bounds.size.width, 0);
     viewController.view.autoresizingMask =  UIViewAutoresizingFlexibleHeight | UIViewAutoresizingFlexibleWidth;
     _blackMask.alpha = 0.0;
+    UIViewController *currentVC = [self currentViewController];
+    [currentVC viewWillDisappear: NO];
     [viewController willMoveToParentViewController:self];
     [self addChildViewController:viewController];
     [self.view bringSubviewToFront:_blackMask];
     [self.view addSubview:viewController.view];
+    #if 0
     [UIView animateWithDuration:kAnimationDuration delay:kAnimationDelay options:0 animations:^{
         CGAffineTransform transf = CGAffineTransformIdentity;
         [self currentViewController].view.transform = CGAffineTransformScale(transf, 0.9f, 0.9f);
@@ -125,6 +140,31 @@ typedef enum {
             handler();
         }
     }];
+    #else
+    /*
+     * Kerberos: fix memory leak!!!!
+     */
+    __weak FlipBoardNavigationController* weakSelf = self;
+    [UIView animateWithDuration:kAnimationDuration delay:kAnimationDelay options:0 animations:^{
+        CGAffineTransform transf = CGAffineTransformIdentity;
+        [weakSelf currentViewController].view.transform = CGAffineTransformScale(transf, 0.9f, 0.9f);
+        viewController.view.frame = weakSelf.view.bounds;
+        _blackMask.alpha = kMaxBlackMaskAlpha;
+    }   completion:^(BOOL finished) {
+        if (finished) {
+            [weakSelf.viewControllers addObject:viewController];
+            [viewController didMoveToParentViewController:weakSelf];
+            _animationInProgress = NO;
+            /*
+             * See: NFFlipNavigationController;
+             */
+            //_gestures = [[NSMutableArray alloc] init];
+            //[self addPanGestureToView:[self currentViewController].view];
+            if (handler)
+                handler();
+        }
+    }];
+    #endif
 }
 
 - (void) pushViewController:(UIViewController *)viewController {
@@ -217,7 +257,7 @@ typedef enum {
 #pragma mark - Add Pan Gesture
 - (void) addPanGestureToView:(UIView*)view
 {
-    NSLog(@"ADD PAN GESTURE $$### %i",[_gestures count]);
+    //NSLog(@"ADD PAN GESTURE $$### %i",[_gestures count]);
     UIPanGestureRecognizer* panGesture = [[UIPanGestureRecognizer alloc] initWithTarget:self
                                                                                  action:@selector(gestureRecognizerDidPan:)];
     panGesture.cancelsTouchesInView = YES;
@@ -238,11 +278,11 @@ typedef enum {
     UIViewController * vc =  [self.viewControllers lastObject];
     _panOrigin = vc.view.frame.origin;
     gestureRecognizer.enabled = YES;
-    return !_animationInProgress;
+    return !_animationInProgress && self.viewControllers.count > 1;
 }
 
 - (BOOL) gestureRecognizer:(UIGestureRecognizer *)gestureRecognizer shouldRecognizeSimultaneouslyWithGestureRecognizer:(UIGestureRecognizer *)otherGestureRecognizer {
-    return YES;
+    return NO;
 }
 
 #pragma mark - Handle Panning Activity
@@ -322,6 +362,7 @@ typedef enum {
 
 #pragma mark - Get the size of view in the main screen
 - (CGRect) viewBoundsWithOrientation:(UIInterfaceOrientation)orientation{
+#if 0
 	CGRect bounds = [UIScreen mainScreen].bounds;
     if([[UIApplication sharedApplication]isStatusBarHidden]){
         return bounds;
@@ -334,6 +375,9 @@ typedef enum {
         bounds.size.height-=20;
         return bounds;
     }
+#else
+    return self.view.bounds;
+#endif
 }
 
 @end
